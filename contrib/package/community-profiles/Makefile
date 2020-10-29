@@ -15,7 +15,7 @@ define Package/community-profiles
   CATEGORY:=LuCI
   SUBMENU:=9. Freifunk
   TITLE:=Community profiles
-  DEPENDS:=freifunk-common
+  EXTRA_DEPENDS:=falter-common
   PKGARCH:=all
 endef
 
