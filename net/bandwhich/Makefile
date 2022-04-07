@@ -16,12 +16,12 @@ include ../../lang/rust/rust_environment.mk
 include $(INCLUDE_DIR)/package.mk
 
 define Build/Prepare
-        $(call Build/Prepare/Default)
-        $(call RustPackage/Cargo/Update)
+	$(call Build/Prepare/Default)
+	$(call RustPackage/Cargo/Update)
 endef
 
 define Build/Compile
-        $(call RustPackage/Cargo/Compile)
+	$(call RustPackage/Cargo/Compile)
 endef
 
 define Package/bandwhich
@@ -37,8 +37,8 @@ define Package/bandwhich/description
 endef
 
 define Package/bandwhich/install
-        $(INSTALL_DIR) $(1)/bin
-        $(INSTALL_BIN) $(PKG_BUILD_DIR)/target/$(REAL_GNU_TARGET_NAME)/release/bandwhich $(1)/bin/bandwhich
+	$(INSTALL_DIR) $(1)/bin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/target/$(REAL_GNU_TARGET_NAME)/release/bandwhich $(1)/bin/bandwhich
 endef
 
 $(eval $(call BuildPackage,bandwhich))
