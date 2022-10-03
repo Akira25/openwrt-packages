@@ -1,0 +1,2025 @@
+From 0d8882d76bf5ba4f5247d97b2e7a01916f0be545 Mon Sep 17 00:00:00 2001
+From: Donald Hoskins <grommish@gmail.com>
+Date: Fri, 25 Mar 2022 23:32:54 -0400
+Subject: [PATCH 01/10] rust-lang: 1.58.1 Rust is a multi-paradigm,
+ general-purpose programming language designed for performance and safety,
+ especially safe concurrency.
+
+Rust is syntactically similar to C++, but can guarantee memory
+safety by using a borrow checker to validate references.
+
+Signed-off-by: Donald Hoskins <grommish@gmail.com>
+---
+ lang/rust/Config.in                      | 118 +++++++++++++++
+ lang/rust/Makefile                       | 184 +++++++++++++++++++++++
+ lang/rust/patches/00-add_mips64.patch    |  72 +++++++++
+ lang/rust/patches/03-add_mips.patch      |  30 ++++
+ lang/rust/patches/04-add_mipsel.patch    |  29 ++++
+ lang/rust/patches/05-add_aarch64.patch   |  27 ++++
+ lang/rust/patches/06-add_armv7.patch     |  39 +++++
+ lang/rust/patches/07-add_armv7hf.patch   |  38 +++++
+ lang/rust/patches/08-add_powerpc64.patch |  30 ++++
+ lang/rust/patches/09-add_x86_64.patch    |  38 +++++
+ lang/rust/rust_config.mk                 | 120 +++++++++++++++
+ lang/rust/rust_environment.mk            |  39 +++++
+ 12 files changed, 764 insertions(+)
+ create mode 100644 lang/rust/Config.in
+ create mode 100644 lang/rust/Makefile
+ create mode 100644 lang/rust/patches/00-add_mips64.patch
+ create mode 100644 lang/rust/patches/03-add_mips.patch
+ create mode 100644 lang/rust/patches/04-add_mipsel.patch
+ create mode 100644 lang/rust/patches/05-add_aarch64.patch
+ create mode 100644 lang/rust/patches/06-add_armv7.patch
+ create mode 100644 lang/rust/patches/07-add_armv7hf.patch
+ create mode 100644 lang/rust/patches/08-add_powerpc64.patch
+ create mode 100644 lang/rust/patches/09-add_x86_64.patch
+ create mode 100644 lang/rust/rust_config.mk
+ create mode 100644 lang/rust/rust_environment.mk
+
+diff --git a/lang/rust/Config.in b/lang/rust/Config.in
+new file mode 100644
+index 000000000000..685fa452a5c4
+--- /dev/null
++++ b/lang/rust/Config.in
+@@ -0,0 +1,118 @@
++# Rust Language Options
++menu "Compiler Options"
++	visible if PACKAGE_rust
++
++	config RUST_DEBUG
++		bool "Enables Debugging Environment (--enable-debug)"
++		default n
++
++	config RUST_DOCS
++		bool "Build standard library documentation (--enable-docs)"
++		default n
++
++	config RUST_COMPILER_DOCS
++		bool "Build compiler documentation (--enable-compiler-docs)"
++		default n
++
++	config RUST_OPTIMIZE_TESTS
++		bool "Build tests with optimizations (--enable-optimized-tests)"
++		default n
++
++	config RUST_PARALLEL
++		bool "Build with multi-threaded support (--enable-parallel-compiler)"
++		default n
++
++	config RUST_VERBOSE_TESTS
++		bool "Enable verbose output when running tests (--enable-verbose-tests)"
++		default n
++
++	config RUST_CCACHE
++		bool "Build with ccache enabled (--enable-ccache)"
++		default n
++
++	config RUST_LLVM_STATIC
++		bool "Statically link to libstdc++ to LLVM (--enable-llvm-static-stdccp)"
++		default n
++
++	config RUST_LLVM_SHARED
++		bool "Prefer shared linking to LLVM (--enable-llvm-link-shared)"
++		default n
++
++	config RUST_CODEGEN_TESTS
++		bool "Run the src/test/codegen tests (--enable-codegen-tests)"
++		default n
++
++	config RUST_OPTION_CHECKING
++		bool "Complain about unrecognized options in this configure script (--enable-option-checking)"
++		default y
++
++	config RUST_ENABLE_NINJA
++		bool "Build LLVM using the Ninja generator (--enable-ninja)"
++		default y
++
++	config RUST_LOCKED_DEPS
++		bool "Force Cargo.lock to be up to date (--enable-locked-deps)"
++		default n
++
++	config RUST_VENDOR
++		bool "Enable usage of vendored Rust crates (--enable-vendor)"
++		default n
++
++	config RUST_SANITIZERS
++		bool "Build the sanitizer runtimes (asan, lsan, msan, tsan) (--enable-sanitizers)"
++		default n
++
++	config RUST_DIST_SRC
++		bool "When building tarballs enables building a source tarball (--enable-dist-src)"
++		default n
++
++	config RUST_CARGO_NATIVE_STATIC
++		bool "Build static native libraries in Cargo (--enable-cargo-native-static)"
++		default n
++
++	config RUST_PROFILER
++		bool "Build the profiler runtime (--enable-profiler)"
++		default n
++
++	config RUST_FULL_TOOLS
++		bool "Build all tools (--enable-full-tools)"
++		default n
++
++	config RUST_MISSING_TOOLS
++		bool "Allow failures when building tools (--enable-missing-tools)"
++		default y
++
++	config RUST_USE_LIBCXX
++		bool "Build LLVM with libc++ (--enable-use-libcxx)"
++		default n
++
++	config RUST_CONTROL_FLOW_GUARD
++		bool "Enable Control Flow Guard (--enable-control-flow-guard)"
++		default n
++
++	config RUST_OPTIMIZE_LLVM
++		bool "Build optimized LLVM (--enable-optimize-llvm)"
++		default y
++
++	config RUST_LLVM_ASSERTIONS
++		bool "Build LLVM with assertions (--enable-llvm-assertions)"
++		default n
++
++	config RUST_DEBUG_ASSERTIONS
++		bool "Build with debugging assertions (--enable-debug-assertions)"
++		default n
++
++	config RUST_LLVM_RELEASE_DEBUGINFO
++		bool "Build LLVM with debugger metadata (--enable-llvm-release-debuginfo)"
++		default n
++
++	config RUST_MANAGE_SUBMODULES
++		bool "Let the build manage the git submodules (--enable-manage-submodules)"
++		default y
++
++	config RUST_FULL_BOOTSTRAP
++		bool "Full Bootstrap - Build three compilers instead of two (--enable-full-bootstrap)"
++		default n
++
++endmenu
++
+diff --git a/lang/rust/Makefile b/lang/rust/Makefile
+new file mode 100644
+index 000000000000..9f2af8e199f9
+--- /dev/null
++++ b/lang/rust/Makefile
+@@ -0,0 +1,184 @@
++# This program is free software: you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation, either version 2 of the License, or
++# (at your option) any later version.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program.  If not, see <http://www.gnu.org/licenses/>.
++include $(TOPDIR)/rules.mk
++
++PKG_NAME := rust
++PKG_VERSION := 1.58.1
++PKG_RELEASE := 1
++
++PKG_LICENSE := Apache-2.0 MIT
++PKG_LICENSE_FILES := LICENSE-APACHE LICENSE-MIT
++
++PKG_SOURCE_PROTO := git
++PKG_SOURCE_URL := https://github.com/rust-lang/rust.git
++PKG_SOURCE_DATE := 2021-12-02
++PKG_SOURCE_VERSION := db9d1b20bba1968c1ec1fc49616d4742c1725b4b
++PKG_MIRROR_HASH := 7adf556f2be1de12fd4a500cc0fef501f2f9c0fa553128ee968ec78290ca8283
++
++PKG_HOST_ONLY := 1
++PKG_BUILD_PARALLEL := 1
++
++HOST_USE_NINJA := 1
++CMAKE_INSTALL := 1
++
++include $(INCLUDE_DIR)/cmake.mk
++include $(INCLUDE_DIR)/host-build.mk
++include $(INCLUDE_DIR)/package.mk
++
++# Requires Python3 to build
++HOST_BUILD_DEPENDS:=python3/host
++
++# rust environmental variables
++include ./rust_environment.mk
++
++# Rust Temp Directory
++RUST_TMP_DIR:=$(TMP_DIR)/rust-install
++
++RUST_INSTALL_HOST_FILENAME:=$(PKG_NAME)-$(PKG_VERSION)-$(RUSTC_HOST_ARCH)-install.tar.xz
++RUST_INSTALL_TARGET_FILENAME:=$(PKG_NAME)-$(PKG_VERSION)-$(RUSTC_TARGET_ARCH)-install.tar.xz
++
++# Rust-lang has an uninstall script
++RUST_UNINSTALL:=$(CARGO_HOME)/lib/rustlib/uninstall.sh
++
++# This checks to see if the dist installation already exists
++IS_RUSTC_INSTALLED:=$(or $(and $(wildcard $(CARGO_HOME)/bin/rustc),true),false)
++IS_CARGO_INSTALLED:=$(or $(and $(wildcard $(CARGO_HOME)/bin/cargo),true),false)
++
++# MUSL Target Flags
++MUSL_CONFIGURE_ARGS = \
++  --set=target.$(RUSTC_TARGET_ARCH).ar=$(TARGET_AR) \
++  --set=target.$(RUSTC_TARGET_ARCH).cc=$(TARGET_CC_NOCACHE) \
++  --set=target.$(RUSTC_TARGET_ARCH).cxx=$(TARGET_CXX_NOCACHE) \
++  --set=target.$(RUSTC_TARGET_ARCH).linker=$(TARGET_CC_NOCACHE) \
++  --set=target.$(RUSTC_TARGET_ARCH).musl-root=$(TOOLCHAIN_DIR) \
++  --set=target.$(RUSTC_TARGET_ARCH).ranlib=$(TARGET_RANLIB)
++
++# CARGO_HOME is an environmental
++HOST_CONFIGURE_OPTS += CARGO_HOME="$(CARGO_HOME)"
++
++# The Flags are Common between HOST and TARGET
++RUST_COMMON_ARGS := \
++  --build=$(RUSTC_HOST_ARCH) \
++  --dist-compression-formats=xz \
++  --enable-llvm-link-shared \
++  --enable-llvm-plugins \
++  --enable-missing-tools \
++  --enable-ninja \
++  --enable-optimize \
++  --enable-optimize-llvm \
++  --enable-parallel-compiler \
++  --enable-sanitizers \
++  --release-channel=nightly \
++  ${MUSL_CONFIGURE_ARGS}
++
++##
++# Because OpenWrt uses default configure flags that are not recognized
++# we override the default and set our own.
++#
++# Rust HOST Configuration Arguments
++HOST_CONFIGURE_ARGS = \
++  --target=$(RUSTC_TARGET_ARCH),$(RUSTC_HOST_ARCH) \
++  --host=$(RUSTC_HOST_ARCH) \
++  --prefix=$(CARGO_HOME) \
++  --bindir=$(CARGO_HOME)/bin \
++  --libdir=$(CARGO_HOME)/lib \
++  --sysconfdir=$(CARGO_HOME)/etc \
++  --datadir=$(CARGO_HOME)/share \
++  --mandir=$(CARGO_HOME)/man \
++  ${RUST_COMMON_ARGS}
++
++# TODO: For future use
++# Rust TARGET Configuration Args
++#CONFIGURE_ARGS = \
++#  --target=$(RUSTC_TARGET_ARCH) \
++#  --host=$(RUSTC_TARGET_ARCH) \
++#  --prefix=$(CONFIGURE_PREFIX) \
++#  --bindir=$(CONFIGURE_PREFIX)/bin \
++#  --libdir=$(CONFIGURE_PREFIX)/lib \
++#  --sysconfdir=$(CONFIGURE_PREFIX)/etc \
++#  --datadir=$(CONFIGURE_PREFIX)/share \
++#  --mandir=$(CONFIGURE_PREFIX)/man \
++#  $(RUST_COMMOM_ARGS) \
++#  --set=llvm.cxxflags='$(RUST_LLVM_CXXFLAGS)'
++
++# Add rust_config.mk Debug flags
++#include ./rust_config.mk
++
++define Host/Prepare
++	# Ensure rust temp directory
++	[ -d $(RUST_TMP_DIR) ] || \
++	  mkdir -p $(RUST_TMP_DIR)
++
++	$(call Host/Prepare/Default)
++endef
++
++define Host/Uninstall
++	# Call the Uninstall script
++	[ -f $(RUST_UNINSTALL) ] && \
++	  $(BASH) $(RUST_UNINSTALL) || echo No Uninstall
++
++	rm -rf $(RUST_TMP_DIR)
++endef
++
++# Makes and then packages the dist artifacts
++define Host/Compile
++	cd $(HOST_BUILD_DIR) && \
++	  $(PYTHON) x.py --config ./config.toml dist build-manifest cargo llvm-tools \
++	    rustc rust-std rust-src
++
++	$(call Host/PackageDist)
++endef
++
++# Distribution Artifacts are packaged by Host/PackageDist
++# We just need to extract and install
++define Host/Install
++	$(TAR) -C $(RUST_TMP_DIR) -xJf $(DL_DIR)/$(RUST_INSTALL_HOST_FILENAME) && \
++	$(TAR) -C $(RUST_TMP_DIR) -xJf $(DL_DIR)/$(RUST_INSTALL_TARGET_FILENAME)
++
++	cd $(RUST_TMP_DIR) && \
++	  find -iname "*.xz" -exec tar -xJf {} ";" && \
++	  find ./* -type f -name install.sh -execdir sh {} --prefix=$(CARGO_HOME) --disable-ldconfig \;
++endef
++
++# Packages the Distribution Artifacts into HOST and TARGET bundles.
++define Host/PackageDist
++	cd $(HOST_BUILD_DIR)/build/dist && \
++	  $(TAR) -cJf $(DL_DIR)/$(RUST_INSTALL_TARGET_FILENAME) \
++	  rust-*-$(RUSTC_TARGET_ARCH).tar.xz
++
++	cd $(HOST_BUILD_DIR)/build/dist && \
++	  $(TAR) -cJf $(DL_DIR)/$(RUST_INSTALL_HOST_FILENAME) \
++	  --exclude rust-*-$(RUSTC_TARGET_ARCH).tar.xz *.xz
++endef
++
++define Package/rust
++  SECTION:=lang
++  CATEGORY:=Languages
++  TITLE:=Rust Programming Language Compiler
++  URL:=https://www.rust-lang.org/
++  DEPENDS:=@(aarch64||arm||mips64||mips||mipsel||x86_64) \
++    +pkg-config +libunwind
++endef
++
++define Package/rust/description
++  Rust is a multi-paradigm, general-purpose programming language designed for performance
++  and safety, especially safe concurrency. Rust is syntactically similar to C++, but can
++  guarantee memory safety by using a borrow checker to validate references.
++endef
++
++define Package/rust/config
++	source "$(SOURCE)/Config.in"
++endef
++
++$(eval $(call HostBuild))
++$(eval $(call BuildPackage,rust))
+diff --git a/lang/rust/patches/00-add_mips64.patch b/lang/rust/patches/00-add_mips64.patch
+new file mode 100644
+index 000000000000..c6c3c3667dd7
+--- /dev/null
++++ b/lang/rust/patches/00-add_mips64.patch
+@@ -0,0 +1,72 @@
++From 2e0f33744f8f67afeecdc4963bccc7942d20582d Mon Sep 17 00:00:00 2001
++From: Donald Hoskins <grommish@gmail.com>
++Date: Mon, 3 Jan 2022 02:48:02 -0500
++Subject: [PATCH] rustc_target: mips64-openwrt-linux-musl - Add Tier 3 target
++
++Tier 3 tuple for Mips64 OpenWrt toolchain.
++
++Signed-off-by: Donald Hoskins <grommish@gmail.com>
++---
++ .../src/spec/mips64_openwrt_linux_musl.rs     | 26 +++++++++++++++++++
++ compiler/rustc_target/src/spec/mod.rs         |  2 ++
++ src/doc/rustc/src/platform-support.md         |  1 +
++ 3 files changed, 29 insertions(+)
++ create mode 100644 compiler/rustc_target/src/spec/mips64_openwrt_linux_musl.rs
++
++diff --git a/compiler/rustc_target/src/spec/mips64_openwrt_linux_musl.rs b/compiler/rustc_target/src/spec/mips64_openwrt_linux_musl.rs
++new file mode 100644
++index 0000000000000..1199ed44202f9
++--- /dev/null
+++++ b/compiler/rustc_target/src/spec/mips64_openwrt_linux_musl.rs
++@@ -0,0 +1,26 @@
+++/// A target tuple for OpenWrt MIPS64 targets
+++///
+++use crate::abi::Endian;
+++use crate::spec::{Target, TargetOptions};
+++
+++pub fn target() -> Target {
+++    let mut base = super::linux_musl_base::opts();
+++    base.cpu = "mips64r2".to_string();
+++    base.features = "+mips64r2".to_string();
+++    base.max_atomic_width = Some(64);
+++    base.crt_static_default = false;
+++
+++    Target {
+++        // LLVM doesn't recognize "muslabi64" yet.
+++        llvm_target: "mips64-unknown-linux-musl".to_string(),
+++        pointer_width: 64,
+++        data_layout: "E-m:e-i8:8:32-i16:16:32-i64:64-n32:64-S128".to_string(),
+++        arch: "mips64".to_string(),
+++        options: TargetOptions {
+++            abi: "abi64".to_string(),
+++            endian: Endian::Big,
+++            mcount: "_mcount".to_string(),
+++            ..base
+++        },
+++    }
+++}
++diff --git a/compiler/rustc_target/src/spec/mod.rs b/compiler/rustc_target/src/spec/mod.rs
++index 43913183694e0..fee40c4c6c95e 100644
++--- a/compiler/rustc_target/src/spec/mod.rs
+++++ b/compiler/rustc_target/src/spec/mod.rs
++@@ -1014,6 +1014,8 @@ supported_targets! {
++     ("armv7-unknown-linux-uclibceabihf", armv7_unknown_linux_uclibceabihf),
++ 
++     ("x86_64-unknown-none", x86_64_unknown_none),
+++
+++    ("mips64-openwrt-linux-musl", mips64_openwrt_linux_musl),
++ }
++ 
++ /// Warnings encountered when parsing the target `json`.
++diff --git a/src/doc/rustc/src/platform-support.md b/src/doc/rustc/src/platform-support.md
++index f4f659ffa273e..d225701087d4d 100644
++--- a/src/doc/rustc/src/platform-support.md
+++++ b/src/doc/rustc/src/platform-support.md
++@@ -244,6 +244,7 @@ target | std | host | notes
++ `i686-wrs-vxworks` | ? |  |
++ `m68k-unknown-linux-gnu` | ? |  | Motorola 680x0 Linux
++ `mips-unknown-linux-uclibc` | ✓ |  | MIPS Linux with uClibc
+++`mips64-openwrt-linux-musl` | ? |  | OpenWrt
++ `mipsel-sony-psp` | * |  | MIPS (LE) Sony PlayStation Portable (PSP)
++ `mipsel-unknown-linux-uclibc` | ✓ |  | MIPS (LE) Linux with uClibc
++ `mipsel-unknown-none` | * |  | Bare MIPS (LE) softfloat
+diff --git a/lang/rust/patches/03-add_mips.patch b/lang/rust/patches/03-add_mips.patch
+new file mode 100644
+index 000000000000..424adcf6254b
+--- /dev/null
++++ b/lang/rust/patches/03-add_mips.patch
+@@ -0,0 +1,30 @@
++--- a/compiler/rustc_target/src/spec/mod.rs
+++++ b/compiler/rustc_target/src/spec/mod.rs
++@@ -1016,6 +1016,7 @@
++     ("x86_64-unknown-none", x86_64_unknown_none),
++
++     ("mips64-openwrt-linux-musl", mips64_openwrt_linux_musl),
+++    ("mips-openwrt-linux-musl", mips_openwrt_linux_musl),
++ }
++
++ /// Warnings encountered when parsing the target `json`.
++--- /dev/null
+++++ b/compiler/rustc_target/src/spec/mips_openwrt_linux_musl.rs
++@@ -0,0 +1,17 @@
+++use crate::abi::Endian;
+++use crate::spec::{Target, TargetOptions};
+++
+++pub fn target() -> Target {
+++    let mut base = super::linux_musl_base::opts();
+++    base.cpu = "mips32r2".to_string();
+++    base.features = "+mips32r2,+soft-float".to_string();
+++    base.max_atomic_width = Some(32);
+++    base.crt_static_default = false;
+++    Target {
+++        llvm_target: "mips-unknown-linux-musl".to_string(),
+++        pointer_width: 32,
+++        data_layout: "E-m:m-p:32:32-i8:8:32-i16:16:32-i64:64-n32-S64".to_string(),
+++        arch: "mips".to_string(),
+++        options: TargetOptions { endian: Endian::Big, mcount: "_mcount".to_string(), ..base },
+++    }
+++}
+diff --git a/lang/rust/patches/04-add_mipsel.patch b/lang/rust/patches/04-add_mipsel.patch
+new file mode 100644
+index 000000000000..c17bbdc63064
+--- /dev/null
++++ b/lang/rust/patches/04-add_mipsel.patch
+@@ -0,0 +1,29 @@
++--- /dev/null
+++++ b/compiler/rustc_target/src/spec/mipsel_openwrt_linux_musl.rs
++@@ -0,0 +1,16 @@
+++use crate::spec::{Target, TargetOptions};
+++
+++pub fn target() -> Target {
+++    let mut base = super::linux_musl_base::opts();
+++    base.cpu = "mips32r2".to_string();
+++    base.features = "+mips32r2,+soft-float".to_string();
+++    base.max_atomic_width = Some(32);
+++    base.crt_static_default = false;
+++    Target {
+++        llvm_target: "mipsel-unknown-linux-musl".to_string(),
+++        pointer_width: 32,
+++        data_layout: "e-m:m-p:32:32-i8:8:32-i16:16:32-i64:64-n32-S64".to_string(),
+++        arch: "mips".to_string(),
+++        options: TargetOptions { mcount: "_mcount".to_string(), ..base },
+++    }
+++}
++--- a/compiler/rustc_target/src/spec/mod.rs
+++++ b/compiler/rustc_target/src/spec/mod.rs
++@@ -1015,6 +1015,7 @@
++
++     ("mips64-openwrt-linux-musl", mips64_openwrt_linux_musl),
++     ("mips-openwrt-linux-musl", mips_openwrt_linux_musl),
+++    ("mipsel-openwrt-linux-musl", mipsel_openwrt_linux_musl),
++ }
++
++ /// Warnings encountered when parsing the target `json`.
+diff --git a/lang/rust/patches/05-add_aarch64.patch b/lang/rust/patches/05-add_aarch64.patch
+new file mode 100644
+index 000000000000..7e005498aa5b
+--- /dev/null
++++ b/lang/rust/patches/05-add_aarch64.patch
+@@ -0,0 +1,27 @@
++--- /dev/null
+++++ b/compiler/rustc_target/src/spec/aarch64_openwrt_linux_musl.rs
++@@ -0,0 +1,14 @@
+++use crate::spec::{Target, TargetOptions};
+++
+++pub fn target() -> Target {
+++    let mut base = super::linux_musl_base::opts();
+++    base.max_atomic_width = Some(128);
+++
+++    Target {
+++        llvm_target: "aarch64-unknown-linux-musl".to_string(),
+++        pointer_width: 64,
+++        data_layout: "e-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128".to_string(),
+++        arch: "aarch64".to_string(),
+++        options: TargetOptions { mcount: "\u{1}_mcount".to_string(), ..base },
+++    }
+++}
++--- a/compiler/rustc_target/src/spec/mod.rs
+++++ b/compiler/rustc_target/src/spec/mod.rs
++@@ -1016,6 +1016,7 @@
++     ("mips64-openwrt-linux-musl", mips64_openwrt_linux_musl),
++     ("mips-openwrt-linux-musl", mips_openwrt_linux_musl),
++     ("mipsel-openwrt-linux-musl", mipsel_openwrt_linux_musl),
+++    ("aarch64-openwrt-linux-musl", aarch64_openwrt_linux_musl),
++ }
++
++ /// Warnings encountered when parsing the target `json`.
+diff --git a/lang/rust/patches/06-add_armv7.patch b/lang/rust/patches/06-add_armv7.patch
+new file mode 100644
+index 000000000000..7ae8e22d0453
+--- /dev/null
++++ b/lang/rust/patches/06-add_armv7.patch
+@@ -0,0 +1,39 @@
++--- /dev/null
+++++ b/compiler/rustc_target/src/spec/armv7_openwrt_linux_muslgnueabi.rs
++@@ -0,0 +1,26 @@
+++use crate::spec::{Target, TargetOptions};
+++
+++// This target is for musl Linux on ARMv7 without thumb-mode, NEON or
+++// hardfloat.
+++
+++pub fn target() -> Target {
+++    // Most of these settings are copied from the armv7_unknown_linux_gnueabi
+++    // target.
+++    Target {
+++        // It's important we use "gnueabi" and not "musleabi" here. LLVM uses it
+++        // to determine the calling convention and float ABI, and it doesn't
+++        // support the "musleabi" value.
+++        llvm_target: "armv7-unknown-linux-gnueabi".to_string(),
+++        pointer_width: 32,
+++        data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".to_string(),
+++        arch: "arm".to_string(),
+++
+++        options: TargetOptions {
+++            abi: "eabi".to_string(),
+++            features: "+v7,+thumb2,+soft-float,-neon".to_string(),
+++            max_atomic_width: Some(64),
+++            mcount: "\u{1}mcount".to_string(),
+++            ..super::linux_musl_base::opts()
+++        },
+++    }
+++}
++--- a/compiler/rustc_target/src/spec/mod.rs
+++++ b/compiler/rustc_target/src/spec/mod.rs
++@@ -1017,6 +1017,7 @@
++     ("mips-openwrt-linux-musl", mips_openwrt_linux_musl),
++     ("mipsel-openwrt-linux-musl", mipsel_openwrt_linux_musl),
++     ("aarch64-openwrt-linux-musl", aarch64_openwrt_linux_musl),
+++    ("armv7-openwrt-linux-muslgnueabi", armv7_openwrt_linux_muslgnueabi),
++ }
++
++ /// Warnings encountered when parsing the target `json`.
+diff --git a/lang/rust/patches/07-add_armv7hf.patch b/lang/rust/patches/07-add_armv7hf.patch
+new file mode 100644
+index 000000000000..c4ad166310db
+--- /dev/null
++++ b/lang/rust/patches/07-add_armv7hf.patch
+@@ -0,0 +1,38 @@
++--- /dev/null
+++++ b/compiler/rustc_target/src/spec/armv7_openwrt_linux_muslgnueabihf.rs
++@@ -0,0 +1,25 @@
+++use crate::spec::{Target, TargetOptions};
+++
+++// This target is for musl Linux on ARMv7 without thumb-mode or NEON.
+++
+++pub fn target() -> Target {
+++    Target {
+++        // It's important we use "gnueabihf" and not "musleabihf" here. LLVM
+++        // uses it to determine the calling convention and float ABI, and LLVM
+++        // doesn't support the "musleabihf" value.
+++        llvm_target: "armv7-unknown-linux-gnueabihf".to_string(),
+++        pointer_width: 32,
+++        data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".to_string(),
+++        arch: "arm".to_string(),
+++
+++        // Most of these settings are copied from the armv7_unknown_linux_gnueabihf
+++        // target.
+++        options: TargetOptions {
+++            abi: "eabihf".to_string(),
+++            features: "+v7,+vfp3,-d32,+thumb2,-neon".to_string(),
+++            max_atomic_width: Some(64),
+++            mcount: "\u{1}mcount".to_string(),
+++            ..super::linux_musl_base::opts()
+++        },
+++    }
+++}
++--- a/compiler/rustc_target/src/spec/mod.rs
+++++ b/compiler/rustc_target/src/spec/mod.rs
++@@ -1018,6 +1018,7 @@
++     ("mipsel-openwrt-linux-musl", mipsel_openwrt_linux_musl),
++     ("aarch64-openwrt-linux-musl", aarch64_openwrt_linux_musl),
++     ("armv7-openwrt-linux-muslgnueabi", armv7_openwrt_linux_muslgnueabi),
+++    ("armv7-openwrt-linux-muslgnueabihf", armv7_openwrt_linux_muslgnueabihf),
++ }
++
++ /// Warnings encountered when parsing the target `json`.
+diff --git a/lang/rust/patches/08-add_powerpc64.patch b/lang/rust/patches/08-add_powerpc64.patch
+new file mode 100644
+index 000000000000..64eb159dc393
+--- /dev/null
++++ b/lang/rust/patches/08-add_powerpc64.patch
+@@ -0,0 +1,30 @@
++--- /dev/null
+++++ b/compiler/rustc_target/src/spec/powerpc64_openwrt_linux_musl.rs
++@@ -0,0 +1,17 @@
+++use crate::abi::Endian;
+++use crate::spec::{LinkerFlavor, Target, TargetOptions};
+++
+++pub fn target() -> Target {
+++    let mut base = super::linux_musl_base::opts();
+++    base.cpu = "ppc64".to_string();
+++    base.pre_link_args.entry(LinkerFlavor::Gcc).or_default().push("-m64".to_string());
+++    base.max_atomic_width = Some(64);
+++
+++    Target {
+++        llvm_target: "powerpc64-unknown-linux-musl".to_string(),
+++        pointer_width: 64,
+++        data_layout: "E-m:e-i64:64-n32:64-S128-v256:256:256-v512:512:512".to_string(),
+++        arch: "powerpc64".to_string(),
+++        options: TargetOptions { endian: Endian::Big, mcount: "_mcount".to_string(), ..base },
+++    }
+++}
++--- a/compiler/rustc_target/src/spec/mod.rs
+++++ b/compiler/rustc_target/src/spec/mod.rs
++@@ -1019,6 +1019,7 @@
++     ("aarch64-openwrt-linux-musl", aarch64_openwrt_linux_musl),
++     ("armv7-openwrt-linux-muslgnueabi", armv7_openwrt_linux_muslgnueabi),
++     ("armv7-openwrt-linux-muslgnueabihf", armv7_openwrt_linux_muslgnueabihf),
+++    ("powerpc64-openwrt-linux-musl", powerpc64_openwrt_linux_musl),
++ }
++
++ /// Warnings encountered when parsing the target `json`.
+diff --git a/lang/rust/patches/09-add_x86_64.patch b/lang/rust/patches/09-add_x86_64.patch
+new file mode 100644
+index 000000000000..369deaa933ce
+--- /dev/null
++++ b/lang/rust/patches/09-add_x86_64.patch
+@@ -0,0 +1,38 @@
++--- /dev/null
+++++ b/compiler/rustc_target/src/spec/x86_64_openwrt_linux_musl.rs
++@@ -0,0 +1,25 @@
+++use crate::spec::{LinkerFlavor, SanitizerSet, StackProbeType, Target};
+++
+++pub fn target() -> Target {
+++    let mut base = super::linux_musl_base::opts();
+++    base.cpu = "x86-64".to_string();
+++    base.max_atomic_width = Some(64);
+++    base.pre_link_args.entry(LinkerFlavor::Gcc).or_default().push("-m64".to_string());
+++    // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
+++    base.stack_probes = StackProbeType::Call;
+++    base.static_position_independent_executables = true;
+++    base.supported_sanitizers = SanitizerSet::ADDRESS
+++        | SanitizerSet::CFI
+++        | SanitizerSet::LEAK
+++        | SanitizerSet::MEMORY
+++        | SanitizerSet::THREAD;
+++
+++    Target {
+++        llvm_target: "x86_64-unknown-linux-musl".to_string(),
+++        pointer_width: 64,
+++        data_layout: "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+++            .to_string(),
+++        arch: "x86_64".to_string(),
+++        options: base,
+++    }
+++}
++--- a/compiler/rustc_target/src/spec/mod.rs
+++++ b/compiler/rustc_target/src/spec/mod.rs
++@@ -1020,6 +1020,7 @@
++     ("armv7-openwrt-linux-muslgnueabi", armv7_openwrt_linux_muslgnueabi),
++     ("armv7-openwrt-linux-muslgnueabihf", armv7_openwrt_linux_muslgnueabihf),
++     ("powerpc64-openwrt-linux-musl", powerpc64_openwrt_linux_musl),
+++    ("x86_64-openwrt-linux-musl", x86_64_openwrt_linux_musl),
++ }
++
++ /// Warnings encountered when parsing the target `json`.
+diff --git a/lang/rust/rust_config.mk b/lang/rust/rust_config.mk
+new file mode 100644
+index 000000000000..7c33069565be
+--- /dev/null
++++ b/lang/rust/rust_config.mk
+@@ -0,0 +1,120 @@
++
++ifeq ($(CONFIG_RUST_DEBUG),y)
++CONFIGURE_ARGS += --enable-debug
++endif
++
++ifeq ($(CONFIG_RUST_DOCS),y)
++CONFIGURE_ARGS += --enable-docs
++else
++CONFIGURE_ARGS += --disable-docs
++endif
++
++ifeq ($(CONFIG_RUST_COMPILER_DOCS),y)
++CONFIGURE_ARGS += --enable-compiler-docs
++else
++CONFIGURE_ARGS += --disable-compiler-docs
++endif
++
++ifeq ($(CONFIG_RUST_OPTIMIZE_TESTS),y)
++CONFIGURE_ARGS += --enable-optimize-tests
++endif
++
++ifeq ($(CONFIG_RUST_PARALLEL),y)
++CONFIGURE_ARGS += --enable-parallel-compiler
++endif
++
++ifeq ($(CONFIG_RUST_VERBOSE_TESTS),y)
++CONFIGURE_ARGS += --enable-verbose-tests
++endif
++
++ifeq ($(filter $(CONFIG_RUST_CCACHE) $(CCACHE),y),)
++CONFIGURE_ARGS += --enable-ccache
++endif
++
++ifeq ($(CONFIG_RUST_CCACHE),y)
++CONFIGURE_ARGS += --enable-ccache
++endif
++
++ifeq ($(CONFIG_RUST_LLVM_STATIC),y)
++CONFIGURE_ARGS += --enable-llvm-static-stdcpp
++endif
++
++ifeq ($(CONFIG_RUST_LLVM_SHARED),y)
++CONFIGURE_ARGS += --enable-llvm-link-shared
++endif
++
++ifeq ($(CONFIG_RUST_CODEGEN_TESTS),y)
++CONFIGURE_ARGS += --enable-codegen-tests
++endif
++
++ifeq ($(CONFIG_RUST_OPTION_CHECKING),y)
++CONFIGURE_ARGS += --enable-option-checking
++endif
++
++ifeq ($(CONFIG_RUST_ENABLE_NINJA),y)
++CONFIGURE_ARGS += --enable-ninja
++endif
++
++ifeq ($(CONFIG_RUST_LOCKED_DEPS),y)
++CONFIGURE_ARGS += --enable-locked-deps
++endif
++
++ifeq ($(CONFIG_RUST_VENDOR),y)
++CONFIGURE_ARGS += --enable-vendor
++endif
++
++ifeq ($(CONFIG_RUST_SANITIZERS),y)
++CONFIGURE_ARGS += --enable-sanitizers
++endif
++
++ifeq ($(CONFIG_RUST_DIST_SRC),y)
++CONFIGURE_ARGS += --enable-dist-src
++endif
++
++ifeq ($(CONFIG_RUST_CARGO_NATIVE_STATIC),y)
++CONFIGURE_ARGS += --enable-cargo-native-static
++endif
++
++ifeq ($(CONFIG_RUST_PROFILER),y)
++CONFIGURE_ARGS += --enable-profiler
++endif
++
++ifeq ($(CONFIG_RUST_FULL_TOOLS),y)
++CONFIGURE_ARGS += --enable-full-tools
++endif
++
++ifeq ($(CONFIG_RUST_MISSING_TOOLS),y)
++CONFIGURE_ARGS += --enable-missing-tools
++endif
++
++ifeq ($(CONFIG_RUST_USE_LIBCXX),y)
++CONFIGURE_ARGS += --enable-use-libcxx
++endif
++
++ifeq ($(CONFIG_RUST_CONTROL_FLOW_GUARD),y)
++CONFIGURE_ARGS += --enable-control-flow-guard
++endif
++
++ifeq ($(CONFIG_RUST_OPTIMIZE_LLVM),y)
++CONFIGURE_ARGS += --enable-optimize-llvm
++endif
++
++ifeq ($(CONFIG_RUST_LLVM_ASSERTIONS),y)
++CONFIGURE_ARGS += --enable-llvm-assertions
++endif
++
++ifeq ($(CONFIG_RUST_DEBUG_ASSERTIONS),y)
++CONFIGURE_ARGS += --enable-debug-assertions
++endif
++
++ifeq ($(CONFIG_RUST_LLVM_RELEASE_DEBUGINFO),y)
++CONFIGURE_ARGS += --enable-llvm-release-debuginfo
++endif
++
++ifeq ($(CONFIG_RUST_MANAGE_SUBMODULES),y)
++CONFIGURE_ARGS += --enable-manage-submodules
++endif
++
++ifeq ($(CONFIG_RUST_FULL_BOOTSTRAP),y)
++CONFIGURE_ARGS += --enable-full-bootstrap
++endif
+diff --git a/lang/rust/rust_environment.mk b/lang/rust/rust_environment.mk
+new file mode 100644
+index 000000000000..be0a9305e679
+--- /dev/null
++++ b/lang/rust/rust_environment.mk
+@@ -0,0 +1,39 @@
++# Rust Environmental Vars
++CONFIG_HOST_SUFFIX:=$(shell cut -d"-" -f4 <<<"$(GNU_HOST_NAME)")
++RUSTC_HOST_ARCH:=$(HOST_ARCH)-unknown-linux-$(CONFIG_HOST_SUFFIX)
++RUSTC_TARGET_ARCH:=$(REAL_GNU_TARGET_NAME)
++CARGO_HOME:=$(STAGING_DIR_HOST)
++
++# These RUSTFLAGS are common across all TARGETs
++RUSTFLAGS = "-C linker=$(TOOLCHAIN_DIR)/bin/$(TARGET_CC_NOCACHE) -C ar=$(TOOLCHAIN_DIR)/bin/$(TARGET_AR)"
++
++# Common Build Flags
++RUST_BUILD_FLAGS = \
++  RUSTFLAGS=$(RUSTFLAGS) \
++  CARGO_HOME="$(CARGO_HOME)"
++
++# This adds the rust environmental variables to Make calls
++MAKE_FLAGS += $(RUST_BUILD_FLAGS)
++
++# ARM Logic
++ifeq ($(ARCH),"arm")
++  ifeq ($(CONFIG_arm_v7),y)
++    RUSTC_TARGET_ARCH:=$(subst arm,armv7,$(RUSTC_TARGET_ARCH))
++  endif
++
++  ifeq ($(CONFIG_HAS_FPU),y)
++    RUSTC_TARGET_ARCH:=$(subst muslgnueabi,muslgnueabihf,$(RUSTC_TARGET_ARCH))
++  endif
++endif
++
++# These allow Cargo packaged projects to be compile via $(call xxx/Compile/Cargo)
++define Host/Compile/Cargo
++	cd $(PKG_BUILD_DIR) && CARGO_HOME=$(CARGO_HOME) RUSTFLAGS=$(RUSTFLAGS) cargo update && \
++	  CARGO_HOME=$(CARGO_HOME) RUSTFLAGS=$(RUSTFLAGS) cargo build -v --release \
++	  --target $(RUSTC_TARGET_ARCH),$(RUST_HOST_ARCH)
++endef
++
++define Build/Compile/Cargo
++	cd $(PKG_BUILD_DIR) && CARGO_HOME=$(CARGO_HOME) RUSTFLAGS=$(RUSTFLAGS) cargo update && \
++	  CARGO_HOME=$(CARGO_HOME) RUSTFLAGS=$(RUSTFLAGS) cargo build -v --release --target $(RUSTC_TARGET_ARCH)
++endef
+
+From ed9855325308cd8df52cb484650eb8759cbb0d28 Mon Sep 17 00:00:00 2001
+From: Donald Hoskins <grommish@gmail.com>
+Date: Thu, 8 Apr 2021 02:00:34 -0400
+Subject: [PATCH 02/10] suricata-update: Initial commit
+
+Provide the framework for Suricata-update
+
+Signed-off-by: Donald Hoskins <grommish@gmail.com>
+---
+ net/suricata-update/Makefile                  | 48 ++++++++++++
+ .../files/etc/config/suricata-update          | 23 ++++++
+ .../files/etc/init.d/suricata-update          | 74 +++++++++++++++++++
+ 3 files changed, 145 insertions(+)
+ create mode 100644 net/suricata-update/Makefile
+ create mode 100644 net/suricata-update/files/etc/config/suricata-update
+ create mode 100755 net/suricata-update/files/etc/init.d/suricata-update
+
+diff --git a/net/suricata-update/Makefile b/net/suricata-update/Makefile
+new file mode 100644
+index 000000000000..b7c36155a499
+--- /dev/null
++++ b/net/suricata-update/Makefile
+@@ -0,0 +1,48 @@
++include $(TOPDIR)/rules.mk
++
++PKG_NAME:=suricata-update
++PKG_VERSION:=1.1.2
++PKG_RELEASE:=1
++PKG_LICENSE:=GPL-2.0
++
++include $(INCLUDE_DIR)/package.mk
++
++define Build/Prepare
++	true
++endef
++
++define Build/Configure
++	true
++endef
++
++define Build/Compile
++	true
++endef
++
++define Package/suricata-update
++    SUBMENU:=Firewall
++    SECTION:=net
++    CATEGORY:=Network
++    DEPENDS:=+suricata6 +python3-pip +python3-yaml
++    TITLE:=OISF Suricata IDS Update Utility
++    URL:=https://www.openinfosecfoundation.org/
++endef
++
++define Package/suricata-update/description
++ Suricata-Update provides updated ruleset lists for the Suricata IDS/IPS/NMS
++endef
++
++define Package/suricata-update/conffiles
++/etc/config/suricata-update
++endef
++
++define Package/suricata-update/install
++	$(INSTALL_DIR) $(1)/etc/init.d
++	$(INSTALL_BIN) ./files/etc/init.d/suricata-update $(1)/etc/init.d/suricata-update
++
++	$(INSTALL_DIR) $(1)/etc/config
++	$(INSTALL_CONF) ./files/etc/config/suricata-update $(1)/etc/config/suricata-update
++endef
++
++$(eval $(call BuildPackage,suricata-update))
++
+diff --git a/net/suricata-update/files/etc/config/suricata-update b/net/suricata-update/files/etc/config/suricata-update
+new file mode 100644
+index 000000000000..ac8fcdc7e715
+--- /dev/null
++++ b/net/suricata-update/files/etc/config/suricata-update
+@@ -0,0 +1,23 @@
++config suricata-update 'update'
++        option defaultpath '/var/lib/suricata'
++        #option rulespath '/var/lib/rules'
++        option reload 1
++        option enable_sources_on_startup 1
++	option testupdate 0
++        list sources 'et/open'
++        list sources 'oisf/trafficid'
++        list sources 'ptresearch/attackdetection'
++        list sources 'sslbl/ssl-fp-blacklist'
++        list sources 'sslbl/ja3-fingerprints'
++        list sources 'etnetera/aggressive'
++        list sources 'tgreen/hunting'
++
++config source
++        option name 'et/open'
++        option secret 'ashkan'
++
++config source
++        option name 'scwx/security'
++        option secret 'jjjj'
++
++
+diff --git a/net/suricata-update/files/etc/init.d/suricata-update b/net/suricata-update/files/etc/init.d/suricata-update
+new file mode 100755
+index 000000000000..5b5c90cb62a6
+--- /dev/null
++++ b/net/suricata-update/files/etc/init.d/suricata-update
+@@ -0,0 +1,74 @@
++#!/bin/sh /etc/rc.common
++
++START=99
++STOP=10
++
++USE_PROCD=1
++PROG=/usr/bin/suricata-update
++
++validate_suricata_update_section() {
++        uci_load_validate suricata-update suricata-update "$1" "$2" \
++                'rulespath:string' \
++                'defaultpath:string:/var/lib/suricata' \
++                'reload:bool' \
++                'enable_sources_on_startup:bool' \
++		'test_update:bool' \
++                'sources:list(string)'
++
++        # If suricata-update doesn't exist, install it.
++        [ ! -f $PROG ] && \
++            /usr/bin/pip3 install suricata-update && \
++            echo "Suricata-Update is now installed to $PROG" && \
++            echo "Please Restart the suricata-update service" && \
++            exit
++}
++
++enable_list() {
++    suricata-update enable-source $1 -D $defaultpath
++}
++enable_source() {
++    local config="$1"
++    config_get source_name $config name
++    config_get secret $config secret
++}
++
++
++start_suricata_update() {
++        [ "$2" = 0 ] || {
++                echo "validation failed"
++                return 1
++        }
++
++	[ $enable_sources_on_startup -eq "1" ] && {
++	        suricata-update update-sources -D $defaultpath
++	        config_list_foreach update sources enable_list
++	        config_foreach enable_source source
++	}
++	procd_open_instance
++	procd_set_param command $PROG -v
++	[ $defaultpath ] && procd_append_param command -D $defaultpath
++	[ $rulespath ] && procd_append_param command -o $rulespath
++	[ $test_update -eq 0 ] && procd_append_param command --no-test
++	[ $reload -eq 1 ] && procd_append_param command --reload-command "/etc/init.d/suricata restart"
++	procd_set_param stdout 1
++	procd_set_param stderr 1
++	procd_close_instance
++}
++
++stop_service()
++{
++        service_stop ${PROG}
++}
++start_service() {
++config_load "suricata"
++validate_suricata_update_section update start_suricata_update
++
++}
++
++service_triggers()
++{
++        procd_add_reload_trigger "suricata-update"
++        procd_add_validation validate_suricata_update_section
++}
++
++
+
+From 2a3be4a2ee79afc05109dbe7e91991513eab2235 Mon Sep 17 00:00:00 2001
+From: Donald Hoskins <grommish@gmail.com>
+Date: Fri, 25 Mar 2022 23:35:18 -0400
+Subject: [PATCH 03/10] suricata6: IDS/IPS/NDM version 6.0.4
+
+Suricata is the leading independent open source threat detection engine.
+By combining intrusion detection (IDS), intrusion prevention (IPS), network
+security monitoring (NSM) and PCAP processing, Suricata can quickly identify,
+stop, and assess even the most sophisticated attacks.
+
+Signed-off-by: Donald Hoskins <grommish@gmail.com>
+---
+ net/suricata6/Config.in                       |  52 ++++++
+ net/suricata6/Makefile                        | 170 ++++++++++++++++++
+ net/suricata6/files/etc/config/suricata       |  12 ++
+ net/suricata6/files/etc/init.d/suricata       |  82 +++++++++
+ net/suricata6/patches/00-fix-soft-float.patch |  11 ++
+ 5 files changed, 327 insertions(+)
+ create mode 100644 net/suricata6/Config.in
+ create mode 100644 net/suricata6/Makefile
+ create mode 100644 net/suricata6/files/etc/config/suricata
+ create mode 100755 net/suricata6/files/etc/init.d/suricata
+ create mode 100644 net/suricata6/patches/00-fix-soft-float.patch
+
+diff --git a/net/suricata6/Config.in b/net/suricata6/Config.in
+new file mode 100644
+index 000000000000..2f83cbb0ad53
+--- /dev/null
++++ b/net/suricata6/Config.in
+@@ -0,0 +1,52 @@
++# Suricata 6 configuration
++menu "Suricata 6 Options"
++	menu "Engine Options"
++		config SURICATA_ENABLE_LUAJIT
++			bool "Enable Lua/LuaJIT Support"
++			default n
++
++		config SURICATA_ENABLE_PYTON
++			bool "Enable Python Support"
++			default n
++
++		config SURICATA_ENABLE_GCCPROTECT
++			bool "Enable GCC Hardening Options"
++			default n
++
++		config SURICATA_ENABLE_GCCPROFILE
++			bool "Enable GCC Profile Info (-pg flag set)"
++			default n
++	endmenu
++
++	config SURICATA_ENABLE_PROFILING
++		bool "Enable Performance Profiling"
++		default n
++
++	config SURICATA_ENABLE_NFQUEUE
++		bool "Enable NFQueue Support"
++		default n
++
++        config SURICATA_ENABLE_NFLOG
++                bool "Enable NFLog Support"
++                default n
++
++	config SURICATA_ENABLE_GEOIP
++		bool "Enable GeoIP2 Support"
++		default n
++
++	config SURICATA_ENABLE_LIBMAGIC
++		bool "Enable LibMagic Support"
++		default y
++
++	config SURICATA_ENABLE_DEBUG
++		bool "Enable Debug Output"
++		default n
++
++	config SURICATA_ENABLE_HIREDIS
++		bool "Enable Hiredis Support"
++		default y
++
++	config SURICATA_ENABLE_EBPF
++		bool "Enable eBPF Support"
++		default n
++endmenu
+diff --git a/net/suricata6/Makefile b/net/suricata6/Makefile
+new file mode 100644
+index 000000000000..9859f89c97b4
+--- /dev/null
++++ b/net/suricata6/Makefile
+@@ -0,0 +1,170 @@
++include $(TOPDIR)/rules.mk
++
++PKG_NAME := suricata
++PKG_VERSION := 6.0.4
++PKG_RELEASE := 1
++
++PKG_SOURCE_PROTO := git
++PKG_SOURCE_DATE := 2021-11-18
++PKG_SOURCE_VERSION := e9c8767b905fcae53432076572bfbeaf639b202d
++PKG_SOURCE_URL := https://github.com/OISF/suricata.git
++PKG_MIRROR_HASH := 0fc6a18c503022f304ae9c86ff8be0f52fe9b204c6dc78c69ef2039395d67d9c
++
++PKG_FIXUP := autoreconf
++PKG_FIXUP := patch-libtool
++
++PKG_BUILD_PARALLEL := 1
++PKG_INSTALL := 1
++PKG_BUILD_DEPENDS := rust/host python3/host expat/host
++
++include $(INCLUDE_DIR)/package.mk
++include ../../lang/rust/rust_environment.mk
++
++define Package/suricata6/config
++    source "$(SOURCE)/Config.in"
++endef
++
++CONFIGURE_VARS += \
++  CARGO_HOME="$(CARGO_HOME)" \
++  ac_cv_path_CARGO="$(CARGO_HOME)/bin/cargo" \
++  ac_cv_path_RUSTC="$(CARGO_HOME)/bin/rustc" \
++
++CONFIGURE_ARGS += \
++  --target=$(RUSTC_TARGET_ARCH) \
++  --host=$(RUSTC_TARGET_ARCH) \
++  --build=$(RUSTC_HOST_ARCH) \
++  --enable-shared \
++  --disable-gccmarch-native \
++  --with-gnu-ld \
++  --with-sysroot=$(STAGING_DIR_HOST)
++#	--enable-non-bundled-htp \
++#	--with-libhtp-includes=$(STAGING_DIR_HOSTPKG)/include \
++#	--with-libhtp-libraries=$(STAGING_DIR_HOSTPKG)/lib
++#	--with-sysroot=$(TOOLCHAIN_DIR)
++
++ifeq ($(CONFIG_SURICATA_ENABLE_PYTHON),y)
++CONFIGURE_ARGS += --enable-python
++endif
++ifeq ($(CONFIG_SURICATA_ENABLE_LUAJIT),y)
++CONFIGURE_ARGS += --enable-luajit
++endif
++ifeq ($(CONFIG_SURICATA_ENABLE_GCCPROTECT),y)
++CONFIGURE_ARBBBGS += --enable-gccprotect
++endif
++ifeq ($(CONFIG_SURICATA_ENABLE_GCCPROFILE),y)
++CONFIGURE_ARGS += --enable-gccprofile
++endif
++
++# For now, x86_64 targets can't use PIE
++ifneq ($(CONFIG_TARGET_x86),y)
++  ifeq ($(CONFIG_PKG_ASLR_PIE_ALL),y)
++    CONFIGURE_ARGS += --enable-pie
++  else ($(CONFIG_PKG_ASLR_PIE_REGULAR),y)
++    CONFIGURE_ARGS += --enable-pie
++  endif
++endif
++
++ifeq ($(CONFIG_SURICATA_ENABLE_NFQUEUE),y)
++CONFIGURE_ARGS += --enable-nfqueue
++endif
++
++ifeq ($(CONFIG_SURICATA_ENABLE_GEOIP),y)
++CONFIGURE_ARGS += --enable-geoip
++endif
++
++ifeq ($(CONFIG_SURICATA_ENABLE_LIBMAGIC),n)
++CONFIGURE_ARGS += --disable-libmagic
++endif
++
++ifeq ($(CONFIG_SURICATA_ENABLE_DEBUG),y)
++TARGET_CXXFLAGS += -ggdb3
++CONFIGURE_ARGS += --enable-debug
++endif
++
++ifeq ($(CONFIG_SURICATA_ENABLE_HIREDIS),y)
++CONFIGURE_ARGS += --enable-hiredis
++endif
++
++ifeq ($(CONFIG_SURICATA_ENABLE_EBPF),y)
++CONFIGURE_ARGS += --enable-ebpf-build
++endif
++
++ifeq ($(CONFIG_SURICATA_ENABLE_NFLOG),y)
++CONFIGURE_ARGS += --enable-nflog
++endif
++
++define Build/Prepare
++	$(call Build/Prepare/Default)
++
++	cd $(PKG_BUILD_DIR) && \
++	  git clone https://github.com/OISF/libhtp.git
++
++	[ -f $(CARGO_HOME)/bin/cbindgen ] || \
++	  $(CONFIGURE_VARS) cargo install --root=$(CARGO_HOME) cbindgen
++
++	cd $(PKG_BUILD_DIR) && $(CONFIGURE_VARS) ./autogen.sh
++endef
++
++define Build/Install
++	$(call Build/Install/Default,install)
++	$(call Build/Install/Default,install-conf)
++endef
++
++define Package/suricata6
++    SUBMENU:=Firewall
++    SECTION:=net
++    CATEGORY:=Network
++    DEPENDS:=@!SMALL_FLASH @!LOW_MEMORY_FOOTPRINT +libexpat +jansson +libpcre +libyaml +libpcap +libcap-ng \
++        +nspr +libnss +liblz4 +libatomic +libnet-1.2.x \
++	+SURICATA_ENABLE_NFLOG:libnetfilter-log \
++  	+SURICATA_ENABLE_NFQUEUE:libnetfilter-queue +SURICATA_ENABLE_NFQUEUE:iptables-mod-nfqueue \
++  	+SURICATA_ENABLE_HIREDIS:libhiredis +SURICATA_ENABLE_HIREDIS:libevent2 \
++  	+SURICATA_ENABLE_LIBMAGIC:file \
++  	+SURICATA_ENABLE_GEOIP:libmaxminddb \
++  	+SURICATA_ENABLE_PYTHON:python3 +SURICATA_ENABLE_PYTHON:python3-yaml \
++  	+SURICATA_ENABLE_LUAJIT:luajit
++    TITLE:=OISF Suricata IDS
++    URL:=https://www.openinfosecfoundation.org/
++    MENU:=1
++endef
++
++define Package/suricata6/description
++Suricata is an open source-based intrusion detection system (IDS), intrusion
++prevention system (IPS), and Network Monitoring System (NMS)
++endef
++
++define Package/suricata6/conffiles
++/etc/config/suricata
++/etc/suricata/
++endef
++
++define Package/suricata6/install
++	$(INSTALL_DIR) $(1)/usr/bin
++	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/suricata $(1)/usr/bin/suricata
++	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/suricatactl $(1)/usr/bin/suricatactl
++	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/suricatasc $(1)/usr/bin/suricatasc
++
++	$(INSTALL_DIR) $(1)/usr/lib
++	$(CP) -r $(PKG_INSTALL_DIR)/usr/lib/* $(1)/usr/lib/
++
++	$(INSTALL_DIR) $(1)/usr/include
++	$(CP) -r $(PKG_INSTALL_DIR)/usr/include/* $(1)/usr/include/
++
++	$(INSTALL_DIR) $(1)/etc/suricata
++	$(CP) $(PKG_BUILD_DIR)/suricata.yaml \
++	$(PKG_BUILD_DIR)/etc/classification.config \
++	$(PKG_BUILD_DIR)/threshold.config \
++	$(PKG_BUILD_DIR)/etc/reference.config \
++	$(1)/etc/suricata/
++
++	$(INSTALL_DIR) $(1)/usr/share/suricata/rules
++	$(CP) $(PKG_INSTALL_DIR)/usr/share/suricata/rules/* $(1)/usr/share/suricata/rules/
++
++	$(INSTALL_DIR) $(1)/etc/init.d
++	$(INSTALL_DIR) $(1)/etc/config
++
++	$(INSTALL_BIN) ./files/etc/init.d/suricata $(1)/etc/init.d/suricata
++	$(INSTALL_CONF) ./files/etc/config/suricata $(1)/etc/config/suricata
++endef
++
++$(eval $(call BuildPackage,suricata6))
+diff --git a/net/suricata6/files/etc/config/suricata b/net/suricata6/files/etc/config/suricata
+new file mode 100644
+index 000000000000..9b3ccbed6019
+--- /dev/null
++++ b/net/suricata6/files/etc/config/suricata
+@@ -0,0 +1,12 @@
++
++config suricata 'service'
++	option config_file '/etc/suricata/suricata.yaml'
++	option logdir '/var/log/suricata'
++	option pidfile '/var/log/suricata.pid'
++	option rules_file '/var/lib/suricata/rules/suricata.rules'
++	list queue '2'
++	list queue '9'
++	option verbose '0'
++	option scan_mode 'af-packet'
++	option interface 'eth0'
++
+diff --git a/net/suricata6/files/etc/init.d/suricata b/net/suricata6/files/etc/init.d/suricata
+new file mode 100755
+index 000000000000..ae92ca58a02d
+--- /dev/null
++++ b/net/suricata6/files/etc/init.d/suricata
+@@ -0,0 +1,82 @@
++#!/bin/sh /etc/rc.common
++# Copyright (C) 2021 Ashkan Jazayeri <ashkan@jazayeri.net>
++
++START=99
++STOP=10
++
++USE_PROCD=1
++PROG=/usr/bin/suricata
++
++validate_suricata_section() {
++	uci_load_validate suricata suricata "$1" "$2" \
++		'scan_mode:string:af-packet' \
++		'interface:string' \
++		'config_file:string' \
++		'logdir:string' \
++		'pidfile:string' \
++		'rules_file:string' \
++		'verbose:range(0,4):0' \
++		'queue:list(range(0,65535))'
++}
++
++start_suricata_instance() {
++	[ "$2" = 0 ] || {
++		echo "validation failed"
++		return 1
++	}
++
++	[ -f $pidfile -a -z $(pgrep suricata) ] && rm $pidfile && \
++		logger -t suricata[init_script] -p daemon.alert -s \
++		"Suricata was not closed properly or it has crashed. Successfully removed the previous $pidfile"
++
++	[ ! -d $logdir ] && mkdir -p $logdir
++
++	procd_open_instance
++	procd_set_param command $PROG -c $config_file
++	[ $rules_file ] && \
++		procd_append_param command -s $rules_file
++	procd_set_param file $config_file
++
++	[ "$verbose" -gt 0 ] && {
++		procd_append_param command -$(printf 'v%.0s' $(seq 1 $verbose))
++		procd_set_param stdout 1
++		procd_set_param stderr 1
++	}
++
++		case "$scan_mode" in
++			"af-packet" )
++				procd_append_param command --af-packet
++				procd_append_param command -i $interface
++				;;
++			"nfq" )
++				[ -n "$queue" ] || {
++					logger -t suricata[init_script] -p daemon.emerg -s "No queue list provided. In NFQUEUE mode, a queue list must be specified under suricata config section (e.g. uci add_list suricata.service.queue=9)"
++					return 1
++				}
++				for number in $queue; do procd_append_param command -q $number ;done
++				;;
++		esac
++
++		procd_set_param respawn
++		procd_close_instance
++}
++
++start_service() {
++	validate_suricata_section service start_suricata_instance
++}
++
++
++stop_service()
++{
++	service_stop $PROG
++}
++
++reload_service() {
++	procd_send_signal suricata '*' SIGUSR2
++}
++
++service_triggers()
++{
++	procd_add_reload_trigger "suricata"
++	procd_add_validation validate_suricata_section
++}
+diff --git a/net/suricata6/patches/00-fix-soft-float.patch b/net/suricata6/patches/00-fix-soft-float.patch
+new file mode 100644
+index 000000000000..fb2128e94677
+--- /dev/null
++++ b/net/suricata6/patches/00-fix-soft-float.patch
+@@ -0,0 +1,11 @@
++--- a/rust/Cargo.toml.in
+++++ b/rust/Cargo.toml.in
++@@ -4,7 +4,7 @@
++ edition = "2018"
++
++ [lib]
++-crate-type = ["staticlib", "rlib"]
+++crate-type = ["staticlib", "rlib", "cdylib"]
++ path = "@e_rustdir@/src/lib.rs"
++
++ [profile.release]
+
+From 9986f3bc0860be0d04189ef53d3960254a45ece8 Mon Sep 17 00:00:00 2001
+From: Donald Hoskins <grommish@gmail.com>
+Date: Fri, 25 Mar 2022 23:38:23 -0400
+Subject: [PATCH 04/10] ripgrep: regex enabled grep Ripgrep recursively
+ searches directories for a regex pattern while respecting your gitignore
+
+Requires rust-lang (#13916)
+
+Signed-off-by: Donald Hoskins <grommish@gmail.com>
+---
+ utils/ripgrep/Makefile | 43 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 43 insertions(+)
+ create mode 100644 utils/ripgrep/Makefile
+
+diff --git a/utils/ripgrep/Makefile b/utils/ripgrep/Makefile
+new file mode 100644
+index 000000000000..10ea556f08ae
+--- /dev/null
++++ b/utils/ripgrep/Makefile
+@@ -0,0 +1,43 @@
++include $(TOPDIR)/rules.mk
++
++PKG_NAME:=ripgrep
++PKG_VERSION:=13.0.0
++PKG_RELEASE:=1
++
++PKG_SOURCE_PROTO:=git
++PKG_SOURCE_DATE:=2021-06-12
++PKG_SOURCE_VERSION:=af6b6c543b224d348a8876f0c06245d9ea7929c5
++PKG_SOURCE_URL:=https://github.com/BurntSushi/ripgrep.git
++PKG_MIRROR_HASH:=05b9f4d11e8213a720197d7c45c764c94b6eb03bf4e3e09c89b2c87b1cdf32fb
++
++PKG_BUILD_DEPENDS:=rust/host
++
++include ../../lang/rust/rust_environment.mk
++include $(INCLUDE_DIR)/package.mk
++
++define Build/Compile
++	$(call Build/Compile/Cargo, --features 'pcre2')
++#        cd $(PKG_BUILD_DIR) && $(TARGET_CONFIGURE_OPTS) $(CONFIGURE_VARS) cargo update && \
++#	  $(TARGET_CONFIGURE_OPTS) $(CONFIGURE_VARS) cargo build -v --release \
++#	  --target $(REAL_GNU_TARGET_NAME) --features 'pcre2'
++endef
++
++define Package/$(PKG_NAME)
++    SECTION:=utils
++    CATEGORY:=Utilities
++    DEPENDS:=@!SMALL_FLASH @!LOW_MEMORY_FOOTPRINT +libpcre2
++    TITLE:=ripgrep (rg) regex grep
++    URL:=https://github.com/BurntSushi/ripgrep
++endef
++
++define Package/$(PKG_NAME)/description
++ripgrep (rg) recursively searches directories for a regex pattern while respecting your gitignore
++endef
++
++define Package/$(PKG_NAME)/install
++	$(INSTALL_DIR) $(1)/bin
++	$(INSTALL_BIN) $(PKG_BUILD_DIR)/target/$(REAL_GNU_TARGET_NAME)/release/rg $(1)/bin/rg
++
++endef
++
++$(eval $(call BuildPackage,$(PKG_NAME)))
+
+From dccc543e99adad9a3fb94e636788674c50ffb684 Mon Sep 17 00:00:00 2001
+From: Donald Hoskins <grommish@gmail.com>
+Date: Sun, 3 Apr 2022 11:38:57 -0400
+Subject: [PATCH 05/10] rust-lang: update to 1.59.0
+
+Signed-off-by: Donald Hoskins <grommish@gmail.com>
+---
+ lang/rust/Makefile | 28 ++++++++++++++--------------
+ 1 file changed, 14 insertions(+), 14 deletions(-)
+
+diff --git a/lang/rust/Makefile b/lang/rust/Makefile
+index 9f2af8e199f9..2b126d913bf1 100644
+--- a/lang/rust/Makefile
++++ b/lang/rust/Makefile
+@@ -12,24 +12,24 @@
+ # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ include $(TOPDIR)/rules.mk
+ 
+-PKG_NAME := rust
+-PKG_VERSION := 1.58.1
+-PKG_RELEASE := 1
++PKG_NAME:=rust
++PKG_VERSION:=1.59.0
++PKG_RELEASE:=1
+ 
+-PKG_LICENSE := Apache-2.0 MIT
+-PKG_LICENSE_FILES := LICENSE-APACHE LICENSE-MIT
++PKG_LICENSE:=Apache-2.0 MIT
++PKG_LICENSE_FILES:=LICENSE-APACHE LICENSE-MIT
+ 
+-PKG_SOURCE_PROTO := git
+-PKG_SOURCE_URL := https://github.com/rust-lang/rust.git
+-PKG_SOURCE_DATE := 2021-12-02
+-PKG_SOURCE_VERSION := db9d1b20bba1968c1ec1fc49616d4742c1725b4b
+-PKG_MIRROR_HASH := 7adf556f2be1de12fd4a500cc0fef501f2f9c0fa553128ee968ec78290ca8283
++PKG_SOURCE_PROTO:=git
++PKG_SOURCE_URL:=https://github.com/rust-lang/rust.git
++PKG_SOURCE_DATE:=2021-12-02
++PKG_SOURCE_VERSION:=db9d1b20bba1968c1ec1fc49616d4742c1725b4b
++PKG_MIRROR_HASH:=187ee9de9f8f39f582b808648377bd856a71a02f869fb3035ecb12d9db20be10
+ 
+-PKG_HOST_ONLY := 1
+-PKG_BUILD_PARALLEL := 1
++PKG_HOST_ONLY:=1
++PKG_BUILD_PARALLEL:=1
+ 
+-HOST_USE_NINJA := 1
+-CMAKE_INSTALL := 1
++HOST_USE_NINJA:=1
++CMAKE_INSTALL:=1
+ 
+ include $(INCLUDE_DIR)/cmake.mk
+ include $(INCLUDE_DIR)/host-build.mk
+
+From f9c97efc8af110514e36749be5c0455b73c981df Mon Sep 17 00:00:00 2001
+From: Donald Hoskins <grommish@gmail.com>
+Date: Sun, 3 Apr 2022 11:39:19 -0400
+Subject: [PATCH 06/10] suricata6: remove un-needed expat call
+
+Signed-off-by: Donald Hoskins <grommish@gmail.com>
+---
+ net/suricata6/Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/suricata6/Makefile b/net/suricata6/Makefile
+index 9859f89c97b4..92f05e7d679d 100644
+--- a/net/suricata6/Makefile
++++ b/net/suricata6/Makefile
+@@ -15,7 +15,7 @@ PKG_FIXUP := patch-libtool
+ 
+ PKG_BUILD_PARALLEL := 1
+ PKG_INSTALL := 1
+-PKG_BUILD_DEPENDS := rust/host python3/host expat/host
++PKG_BUILD_DEPENDS := rust/host python3/host
+ 
+ include $(INCLUDE_DIR)/package.mk
+ include ../../lang/rust/rust_environment.mk
+
+From 0f716ba189270ad08b91e8b8a146e6ff9c1025d0 Mon Sep 17 00:00:00 2001
+From: Luca Barbato <lu_zero@gentoo.org>
+Date: Sun, 2 Oct 2022 11:45:21 +0200
+Subject: [PATCH 07/10] rust-lang: Bump rustc to 1.64
+
+---
+ lang/rust/Makefile                       | 12 ++--
+ lang/rust/patches/00-add_mips64.patch    | 72 ------------------------
+ lang/rust/patches/03-add_mips.patch      | 12 ++--
+ lang/rust/patches/04-add_mipsel.patch    | 12 ++--
+ lang/rust/patches/05-add_aarch64.patch   |  8 +--
+ lang/rust/patches/06-add_armv7.patch     | 12 ++--
+ lang/rust/patches/07-add_armv7hf.patch   | 12 ++--
+ lang/rust/patches/08-add_powerpc64.patch | 12 ++--
+ lang/rust/patches/09-add_x86_64.patch    | 10 ++--
+ 9 files changed, 43 insertions(+), 119 deletions(-)
+ delete mode 100644 lang/rust/patches/00-add_mips64.patch
+
+diff --git a/lang/rust/Makefile b/lang/rust/Makefile
+index 2b126d913bf1..7fa0a4b520ca 100644
+--- a/lang/rust/Makefile
++++ b/lang/rust/Makefile
+@@ -13,7 +13,7 @@
+ include $(TOPDIR)/rules.mk
+ 
+ PKG_NAME:=rust
+-PKG_VERSION:=1.59.0
++PKG_VERSION:=1.64.0
+ PKG_RELEASE:=1
+ 
+ PKG_LICENSE:=Apache-2.0 MIT
+@@ -21,9 +21,7 @@ PKG_LICENSE_FILES:=LICENSE-APACHE LICENSE-MIT
+ 
+ PKG_SOURCE_PROTO:=git
+ PKG_SOURCE_URL:=https://github.com/rust-lang/rust.git
+-PKG_SOURCE_DATE:=2021-12-02
+-PKG_SOURCE_VERSION:=db9d1b20bba1968c1ec1fc49616d4742c1725b4b
+-PKG_MIRROR_HASH:=187ee9de9f8f39f582b808648377bd856a71a02f869fb3035ecb12d9db20be10
++PKG_SOURCE_VERSION:=a55dd71d5fb0ec5a6a3a9e8c27b2127ba491ce52
+ 
+ PKG_HOST_ONLY:=1
+ PKG_BUILD_PARALLEL:=1
+@@ -74,11 +72,9 @@ RUST_COMMON_ARGS := \
+   --enable-llvm-plugins \
+   --enable-missing-tools \
+   --enable-ninja \
+-  --enable-optimize \
+-  --enable-optimize-llvm \
+-  --enable-parallel-compiler \
+   --enable-sanitizers \
+   --release-channel=nightly \
++  --set=build.cargo-native-static \
+   ${MUSL_CONFIGURE_ARGS}
+ 
+ ##
+@@ -167,7 +163,7 @@ define Package/rust
+   TITLE:=Rust Programming Language Compiler
+   URL:=https://www.rust-lang.org/
+   DEPENDS:=@(aarch64||arm||mips64||mips||mipsel||x86_64) \
+-    +pkg-config +libunwind
++    +pkg-config +libunwind +libopenssl
+ endef
+ 
+ define Package/rust/description
+diff --git a/lang/rust/patches/00-add_mips64.patch b/lang/rust/patches/00-add_mips64.patch
+deleted file mode 100644
+index c6c3c3667dd7..000000000000
+--- a/lang/rust/patches/00-add_mips64.patch
++++ /dev/null
+@@ -1,72 +0,0 @@
+-From 2e0f33744f8f67afeecdc4963bccc7942d20582d Mon Sep 17 00:00:00 2001
+-From: Donald Hoskins <grommish@gmail.com>
+-Date: Mon, 3 Jan 2022 02:48:02 -0500
+-Subject: [PATCH] rustc_target: mips64-openwrt-linux-musl - Add Tier 3 target
+-
+-Tier 3 tuple for Mips64 OpenWrt toolchain.
+-
+-Signed-off-by: Donald Hoskins <grommish@gmail.com>
+----
+- .../src/spec/mips64_openwrt_linux_musl.rs     | 26 +++++++++++++++++++
+- compiler/rustc_target/src/spec/mod.rs         |  2 ++
+- src/doc/rustc/src/platform-support.md         |  1 +
+- 3 files changed, 29 insertions(+)
+- create mode 100644 compiler/rustc_target/src/spec/mips64_openwrt_linux_musl.rs
+-
+-diff --git a/compiler/rustc_target/src/spec/mips64_openwrt_linux_musl.rs b/compiler/rustc_target/src/spec/mips64_openwrt_linux_musl.rs
+-new file mode 100644
+-index 0000000000000..1199ed44202f9
+---- /dev/null
+-+++ b/compiler/rustc_target/src/spec/mips64_openwrt_linux_musl.rs
+-@@ -0,0 +1,26 @@
+-+/// A target tuple for OpenWrt MIPS64 targets
+-+///
+-+use crate::abi::Endian;
+-+use crate::spec::{Target, TargetOptions};
+-+
+-+pub fn target() -> Target {
+-+    let mut base = super::linux_musl_base::opts();
+-+    base.cpu = "mips64r2".to_string();
+-+    base.features = "+mips64r2".to_string();
+-+    base.max_atomic_width = Some(64);
+-+    base.crt_static_default = false;
+-+
+-+    Target {
+-+        // LLVM doesn't recognize "muslabi64" yet.
+-+        llvm_target: "mips64-unknown-linux-musl".to_string(),
+-+        pointer_width: 64,
+-+        data_layout: "E-m:e-i8:8:32-i16:16:32-i64:64-n32:64-S128".to_string(),
+-+        arch: "mips64".to_string(),
+-+        options: TargetOptions {
+-+            abi: "abi64".to_string(),
+-+            endian: Endian::Big,
+-+            mcount: "_mcount".to_string(),
+-+            ..base
+-+        },
+-+    }
+-+}
+-diff --git a/compiler/rustc_target/src/spec/mod.rs b/compiler/rustc_target/src/spec/mod.rs
+-index 43913183694e0..fee40c4c6c95e 100644
+---- a/compiler/rustc_target/src/spec/mod.rs
+-+++ b/compiler/rustc_target/src/spec/mod.rs
+-@@ -1014,6 +1014,8 @@ supported_targets! {
+-     ("armv7-unknown-linux-uclibceabihf", armv7_unknown_linux_uclibceabihf),
+- 
+-     ("x86_64-unknown-none", x86_64_unknown_none),
+-+
+-+    ("mips64-openwrt-linux-musl", mips64_openwrt_linux_musl),
+- }
+- 
+- /// Warnings encountered when parsing the target `json`.
+-diff --git a/src/doc/rustc/src/platform-support.md b/src/doc/rustc/src/platform-support.md
+-index f4f659ffa273e..d225701087d4d 100644
+---- a/src/doc/rustc/src/platform-support.md
+-+++ b/src/doc/rustc/src/platform-support.md
+-@@ -244,6 +244,7 @@ target | std | host | notes
+- `i686-wrs-vxworks` | ? |  |
+- `m68k-unknown-linux-gnu` | ? |  | Motorola 680x0 Linux
+- `mips-unknown-linux-uclibc` | ✓ |  | MIPS Linux with uClibc
+-+`mips64-openwrt-linux-musl` | ? |  | OpenWrt
+- `mipsel-sony-psp` | * |  | MIPS (LE) Sony PlayStation Portable (PSP)
+- `mipsel-unknown-linux-uclibc` | ✓ |  | MIPS (LE) Linux with uClibc
+- `mipsel-unknown-none` | * |  | Bare MIPS (LE) softfloat
+diff --git a/lang/rust/patches/03-add_mips.patch b/lang/rust/patches/03-add_mips.patch
+index 424adcf6254b..db48710f3e6c 100644
+--- a/lang/rust/patches/03-add_mips.patch
++++ b/lang/rust/patches/03-add_mips.patch
+@@ -16,15 +16,15 @@
+ +
+ +pub fn target() -> Target {
+ +    let mut base = super::linux_musl_base::opts();
+-+    base.cpu = "mips32r2".to_string();
+-+    base.features = "+mips32r2,+soft-float".to_string();
+++    base.cpu = "mips32r2".into();
+++    base.features = "+mips32r2,+soft-float".into();
+ +    base.max_atomic_width = Some(32);
+ +    base.crt_static_default = false;
+ +    Target {
+-+        llvm_target: "mips-unknown-linux-musl".to_string(),
+++        llvm_target: "mips-unknown-linux-musl".into(),
+ +        pointer_width: 32,
+-+        data_layout: "E-m:m-p:32:32-i8:8:32-i16:16:32-i64:64-n32-S64".to_string(),
+-+        arch: "mips".to_string(),
+-+        options: TargetOptions { endian: Endian::Big, mcount: "_mcount".to_string(), ..base },
+++        data_layout: "E-m:m-p:32:32-i8:8:32-i16:16:32-i64:64-n32-S64".into(),
+++        arch: "mips".into(),
+++        options: TargetOptions { endian: Endian::Big, mcount: "_mcount".into(), ..base },
+ +    }
+ +}
+diff --git a/lang/rust/patches/04-add_mipsel.patch b/lang/rust/patches/04-add_mipsel.patch
+index c17bbdc63064..b64f1eaa46eb 100644
+--- a/lang/rust/patches/04-add_mipsel.patch
++++ b/lang/rust/patches/04-add_mipsel.patch
+@@ -5,16 +5,16 @@
+ +
+ +pub fn target() -> Target {
+ +    let mut base = super::linux_musl_base::opts();
+-+    base.cpu = "mips32r2".to_string();
+-+    base.features = "+mips32r2,+soft-float".to_string();
+++    base.cpu = "mips32r2".into();
+++    base.features = "+mips32r2,+soft-float".into();
+ +    base.max_atomic_width = Some(32);
+ +    base.crt_static_default = false;
+ +    Target {
+-+        llvm_target: "mipsel-unknown-linux-musl".to_string(),
+++        llvm_target: "mipsel-unknown-linux-musl".into(),
+ +        pointer_width: 32,
+-+        data_layout: "e-m:m-p:32:32-i8:8:32-i16:16:32-i64:64-n32-S64".to_string(),
+-+        arch: "mips".to_string(),
+-+        options: TargetOptions { mcount: "_mcount".to_string(), ..base },
+++        data_layout: "e-m:m-p:32:32-i8:8:32-i16:16:32-i64:64-n32-S64".into(),
+++        arch: "mips".into(),
+++        options: TargetOptions { mcount: "_mcount".into(), ..base },
+ +    }
+ +}
+ --- a/compiler/rustc_target/src/spec/mod.rs
+diff --git a/lang/rust/patches/05-add_aarch64.patch b/lang/rust/patches/05-add_aarch64.patch
+index 7e005498aa5b..0d21d6f1852d 100644
+--- a/lang/rust/patches/05-add_aarch64.patch
++++ b/lang/rust/patches/05-add_aarch64.patch
+@@ -8,11 +8,11 @@
+ +    base.max_atomic_width = Some(128);
+ +
+ +    Target {
+-+        llvm_target: "aarch64-unknown-linux-musl".to_string(),
+++        llvm_target: "aarch64-unknown-linux-musl".into(),
+ +        pointer_width: 64,
+-+        data_layout: "e-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128".to_string(),
+-+        arch: "aarch64".to_string(),
+-+        options: TargetOptions { mcount: "\u{1}_mcount".to_string(), ..base },
+++        data_layout: "e-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128".into(),
+++        arch: "aarch64".into(),
+++        options: TargetOptions { mcount: "\u{1}_mcount".into(), ..base },
+ +    }
+ +}
+ --- a/compiler/rustc_target/src/spec/mod.rs
+diff --git a/lang/rust/patches/06-add_armv7.patch b/lang/rust/patches/06-add_armv7.patch
+index 7ae8e22d0453..26735cc26e53 100644
+--- a/lang/rust/patches/06-add_armv7.patch
++++ b/lang/rust/patches/06-add_armv7.patch
+@@ -13,16 +13,16 @@
+ +        // It's important we use "gnueabi" and not "musleabi" here. LLVM uses it
+ +        // to determine the calling convention and float ABI, and it doesn't
+ +        // support the "musleabi" value.
+-+        llvm_target: "armv7-unknown-linux-gnueabi".to_string(),
+++        llvm_target: "armv7-unknown-linux-gnueabi".into(),
+ +        pointer_width: 32,
+-+        data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".to_string(),
+-+        arch: "arm".to_string(),
+++        data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".into(),
+++        arch: "arm".into(),
+ +
+ +        options: TargetOptions {
+-+            abi: "eabi".to_string(),
+-+            features: "+v7,+thumb2,+soft-float,-neon".to_string(),
+++            abi: "eabi".into(),
+++            features: "+v7,+thumb2,+soft-float,-neon".into(),
+ +            max_atomic_width: Some(64),
+-+            mcount: "\u{1}mcount".to_string(),
+++            mcount: "\u{1}mcount".into(),
+ +            ..super::linux_musl_base::opts()
+ +        },
+ +    }
+diff --git a/lang/rust/patches/07-add_armv7hf.patch b/lang/rust/patches/07-add_armv7hf.patch
+index c4ad166310db..dcea37a2e4d7 100644
+--- a/lang/rust/patches/07-add_armv7hf.patch
++++ b/lang/rust/patches/07-add_armv7hf.patch
+@@ -10,18 +10,18 @@
+ +        // It's important we use "gnueabihf" and not "musleabihf" here. LLVM
+ +        // uses it to determine the calling convention and float ABI, and LLVM
+ +        // doesn't support the "musleabihf" value.
+-+        llvm_target: "armv7-unknown-linux-gnueabihf".to_string(),
+++        llvm_target: "armv7-unknown-linux-gnueabihf".into(),
+ +        pointer_width: 32,
+-+        data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".to_string(),
+-+        arch: "arm".to_string(),
+++        data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".into(),
+++        arch: "arm".into(),
+ +
+ +        // Most of these settings are copied from the armv7_unknown_linux_gnueabihf
+ +        // target.
+ +        options: TargetOptions {
+-+            abi: "eabihf".to_string(),
+-+            features: "+v7,+vfp3,-d32,+thumb2,-neon".to_string(),
+++            abi: "eabihf".into(),
+++            features: "+v7,+vfp3,-d32,+thumb2,-neon".into(),
+ +            max_atomic_width: Some(64),
+-+            mcount: "\u{1}mcount".to_string(),
+++            mcount: "\u{1}mcount".into(),
+ +            ..super::linux_musl_base::opts()
+ +        },
+ +    }
+diff --git a/lang/rust/patches/08-add_powerpc64.patch b/lang/rust/patches/08-add_powerpc64.patch
+index 64eb159dc393..1d73df43737a 100644
+--- a/lang/rust/patches/08-add_powerpc64.patch
++++ b/lang/rust/patches/08-add_powerpc64.patch
+@@ -6,16 +6,16 @@
+ +
+ +pub fn target() -> Target {
+ +    let mut base = super::linux_musl_base::opts();
+-+    base.cpu = "ppc64".to_string();
+-+    base.pre_link_args.entry(LinkerFlavor::Gcc).or_default().push("-m64".to_string());
+++    base.cpu = "ppc64".into();
+++    base.pre_link_args.entry(LinkerFlavor::Gcc).or_default().push("-m64".into());
+ +    base.max_atomic_width = Some(64);
+ +
+ +    Target {
+-+        llvm_target: "powerpc64-unknown-linux-musl".to_string(),
+++        llvm_target: "powerpc64-unknown-linux-musl".into(),
+ +        pointer_width: 64,
+-+        data_layout: "E-m:e-i64:64-n32:64-S128-v256:256:256-v512:512:512".to_string(),
+-+        arch: "powerpc64".to_string(),
+-+        options: TargetOptions { endian: Endian::Big, mcount: "_mcount".to_string(), ..base },
+++        data_layout: "E-m:e-i64:64-n32:64-S128-v256:256:256-v512:512:512".into(),
+++        arch: "powerpc64".into(),
+++        options: TargetOptions { endian: Endian::Big, mcount: "_mcount".into(), ..base },
+ +    }
+ +}
+ --- a/compiler/rustc_target/src/spec/mod.rs
+diff --git a/lang/rust/patches/09-add_x86_64.patch b/lang/rust/patches/09-add_x86_64.patch
+index 369deaa933ce..b1e2b4b8bf6a 100644
+--- a/lang/rust/patches/09-add_x86_64.patch
++++ b/lang/rust/patches/09-add_x86_64.patch
+@@ -5,9 +5,9 @@
+ +
+ +pub fn target() -> Target {
+ +    let mut base = super::linux_musl_base::opts();
+-+    base.cpu = "x86-64".to_string();
+++    base.cpu = "x86-64".into();
+ +    base.max_atomic_width = Some(64);
+-+    base.pre_link_args.entry(LinkerFlavor::Gcc).or_default().push("-m64".to_string());
+++    base.pre_link_args.entry(LinkerFlavor::Gcc).or_default().push("-m64".into());
+ +    // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
+ +    base.stack_probes = StackProbeType::Call;
+ +    base.static_position_independent_executables = true;
+@@ -18,11 +18,11 @@
+ +        | SanitizerSet::THREAD;
+ +
+ +    Target {
+-+        llvm_target: "x86_64-unknown-linux-musl".to_string(),
+++        llvm_target: "x86_64-unknown-linux-musl".into(),
+ +        pointer_width: 64,
+ +        data_layout: "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
+-+            .to_string(),
+-+        arch: "x86_64".to_string(),
+++            .into(),
+++        arch: "x86_64".into(),
+ +        options: base,
+ +    }
+ +}
+
+From d036958744150666d055acb888535494fd670029 Mon Sep 17 00:00:00 2001
+From: Luca Barbato <lu_zero@gentoo.org>
+Date: Sun, 2 Oct 2022 21:15:01 +0200
+Subject: [PATCH 08/10] rust_lang: Fix the env helper
+
+---
+ lang/rust/rust_environment.mk | 18 ++++++++++--------
+ 1 file changed, 10 insertions(+), 8 deletions(-)
+
+diff --git a/lang/rust/rust_environment.mk b/lang/rust/rust_environment.mk
+index be0a9305e679..542f1d7d866b 100644
+--- a/lang/rust/rust_environment.mk
++++ b/lang/rust/rust_environment.mk
+@@ -4,12 +4,8 @@ RUSTC_HOST_ARCH:=$(HOST_ARCH)-unknown-linux-$(CONFIG_HOST_SUFFIX)
+ RUSTC_TARGET_ARCH:=$(REAL_GNU_TARGET_NAME)
+ CARGO_HOME:=$(STAGING_DIR_HOST)
+ 
+-# These RUSTFLAGS are common across all TARGETs
+-RUSTFLAGS = "-C linker=$(TOOLCHAIN_DIR)/bin/$(TARGET_CC_NOCACHE) -C ar=$(TOOLCHAIN_DIR)/bin/$(TARGET_AR)"
+-
+ # Common Build Flags
+ RUST_BUILD_FLAGS = \
+-  RUSTFLAGS=$(RUSTFLAGS) \
+   CARGO_HOME="$(CARGO_HOME)"
+ 
+ # This adds the rust environmental variables to Make calls
+@@ -26,14 +22,20 @@ ifeq ($(ARCH),"arm")
+   endif
+ endif
+ 
++
+ # These allow Cargo packaged projects to be compile via $(call xxx/Compile/Cargo)
+ define Host/Compile/Cargo
+-	cd $(PKG_BUILD_DIR) && CARGO_HOME=$(CARGO_HOME) RUSTFLAGS=$(RUSTFLAGS) cargo update && \
+-	  CARGO_HOME=$(CARGO_HOME) RUSTFLAGS=$(RUSTFLAGS) cargo build -v --release \
++	mkdir -p $(PKG_BUILD_DIR)/.cargo
++	cd $(PKG_BUILD_DIR) && \
++	  CARGO_HOME=$(CARGO_HOME) cargo update && \
++	  CARGO_HOME=$(CARGO_HOME) cargo build -v --release \
+ 	  --target $(RUSTC_TARGET_ARCH),$(RUST_HOST_ARCH)
+ endef
+ 
+ define Build/Compile/Cargo
+-	cd $(PKG_BUILD_DIR) && CARGO_HOME=$(CARGO_HOME) RUSTFLAGS=$(RUSTFLAGS) cargo update && \
+-	  CARGO_HOME=$(CARGO_HOME) RUSTFLAGS=$(RUSTFLAGS) cargo build -v --release --target $(RUSTC_TARGET_ARCH)
++	mkdir -p $(PKG_BUILD_DIR)/.cargo
++	cd $(PKG_BUILD_DIR) && \
++	  CARGO_HOME=$(CARGO_HOME) cargo update && \
++	  echo -e "[target.$(RUSTC_TARGET_ARCH)]\nlinker = \"$(TARGET_CC_NOCACHE)\"" > .cargo/config && \
++	  CARGO_HOME=$(CARGO_HOME) CFLAGS=-mno-outline-atomics TARGET_CC=$(TARGET_CC_NOCACHE) CC=cc cargo build -v --release --target $(RUSTC_TARGET_ARCH)
+ endef
+
+From fbb2a5ded8f139661dff55118ef35ca671dfc953 Mon Sep 17 00:00:00 2001
+From: Luca Barbato <lu_zero@gentoo.org>
+Date: Sun, 2 Oct 2022 21:33:27 +0200
+Subject: [PATCH 09/10] ripgrep: Cleanup the Build and install targets
+
+---
+ utils/ripgrep/Makefile | 6 +-----
+ 1 file changed, 1 insertion(+), 5 deletions(-)
+
+diff --git a/utils/ripgrep/Makefile b/utils/ripgrep/Makefile
+index 10ea556f08ae..448d2167e67f 100644
+--- a/utils/ripgrep/Makefile
++++ b/utils/ripgrep/Makefile
+@@ -17,9 +17,6 @@ include $(INCLUDE_DIR)/package.mk
+ 
+ define Build/Compile
+ 	$(call Build/Compile/Cargo, --features 'pcre2')
+-#        cd $(PKG_BUILD_DIR) && $(TARGET_CONFIGURE_OPTS) $(CONFIGURE_VARS) cargo update && \
+-#	  $(TARGET_CONFIGURE_OPTS) $(CONFIGURE_VARS) cargo build -v --release \
+-#	  --target $(REAL_GNU_TARGET_NAME) --features 'pcre2'
+ endef
+ 
+ define Package/$(PKG_NAME)
+@@ -36,8 +33,7 @@ endef
+ 
+ define Package/$(PKG_NAME)/install
+ 	$(INSTALL_DIR) $(1)/bin
+-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/target/$(REAL_GNU_TARGET_NAME)/release/rg $(1)/bin/rg
+-
++	$(INSTALL_BIN) $(PKG_BUILD_DIR)/target/$(RUSTC_TARGET_ARCH)/release/rg $(1)/bin/rg
+ endef
+ 
+ $(eval $(call BuildPackage,$(PKG_NAME)))
+
+From 0b8ee3d94265125ba2dbe1f10b3b0221fe9a8974 Mon Sep 17 00:00:00 2001
+From: Luca Barbato <lu_zero@gentoo.org>
+Date: Sun, 2 Oct 2022 21:34:18 +0200
+Subject: [PATCH 10/10] ripgrep: Use the release tarballs
+
+---
+ utils/ripgrep/Makefile | 9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
+
+diff --git a/utils/ripgrep/Makefile b/utils/ripgrep/Makefile
+index 448d2167e67f..e8e1a6f7cb5d 100644
+--- a/utils/ripgrep/Makefile
++++ b/utils/ripgrep/Makefile
+@@ -4,11 +4,10 @@ PKG_NAME:=ripgrep
+ PKG_VERSION:=13.0.0
+ PKG_RELEASE:=1
+ 
+-PKG_SOURCE_PROTO:=git
+-PKG_SOURCE_DATE:=2021-06-12
+-PKG_SOURCE_VERSION:=af6b6c543b224d348a8876f0c06245d9ea7929c5
+-PKG_SOURCE_URL:=https://github.com/BurntSushi/ripgrep.git
+-PKG_MIRROR_HASH:=05b9f4d11e8213a720197d7c45c764c94b6eb03bf4e3e09c89b2c87b1cdf32fb
++
++PKG_SOURCE:=$(PKG_VERSION).tar.gz
++PKG_SOURCE_URL:=https://github.com/BurntSushi/ripgrep/archive/refs/tags/
++PKG_HASH:=0fb17aaf285b3eee8ddab17b833af1e190d73de317ff9648751ab0660d763ed2
+ 
+ PKG_BUILD_DEPENDS:=rust/host
+ 
